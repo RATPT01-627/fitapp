@@ -1,0 +1,64 @@
+name: Build Android APK for Kivy App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git zip unzip openjdk-11-jdk zlib1g-dev libncurses5-dev libstdc++6
+
+      - name: Install buildozer and cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.33
+
+      - name: Create buildozer.spec
+        run: |
+          cat > buildozer.spec << 'EOF'
+          [app]
+          title = 圣安地列斯身体养成
+          package.name = gta_body_fitness
+          package.domain = com.fitness
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json
+          version = 1.0
+          requirements = python3,kivy,requests,plyer,baidu-aip,bleak
+          orientation = portrait
+          fullscreen = 0
+
+          android.api = 33
+          android.minapi = 24
+          android.ndk = 25b
+          android.buildtools = 33.0.0
+          android.permissions = CAMERA, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, BLUETOOTH_SCAN, BLUETOOTH_CONNECT, INTERNET, WAKE_LOCK
+          android.wakelock = True
+          android.arch = arm64-v8a,armeabi-v7a
+
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+
+      - name: Build APK with buildozer
+        run: buildozer android release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gta-fitness-apk
+          path: bin/*.apk
